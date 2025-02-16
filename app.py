@@ -94,23 +94,15 @@ def clean_inactive_sessions():
         time.sleep(300)
 
 def keep_alive():
-    """সার্ভার সক্রিয় রাখতে প্রতি ৫ মিনিট পর পিং পাঠায়।"""
-    # আপনার রেন্ডার অ্যাপের প্রকৃত URL দিয়ে প্রতিস্থাপন করুন
     url = "https://app-ly.onrender.com/ping"
     while True:
         time.sleep(300)
         try:
             response = requests.get(url)
-            if response.status_code == 200:
-                print("✅ Keep-Alive Ping Successful")
-            else:
-                print(f"⚠️ Keep-Alive Ping Failed: Status Code {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Keep-Alive Error: {e}")
+            print("✅ Ping successful" if response.status_code == 200 else f"⚠️ Ping failed: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Error: {e}")
 
-# ব্যাকগ্রাউন্ড থ্রেড চালু করা
-threading.Thread(target=clean_inactive_sessions, daemon=True).start()
-threading.Thread(target=keep_alive, daemon=True).start()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    Thread(target=keep_alive, daemon=True).start()
+    app.run(debug=True, host='0.0.0.0', port=3000)
