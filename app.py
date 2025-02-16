@@ -17,7 +17,7 @@ generation_config_td = {
     "temperature": 0.2,
     "top_p": 0.85,
     "top_k": 30,
-    "max_output_tokens": 50,  # আনুমানিক ২০ শব্দের মধ্যে সীমিত
+    "max_output_tokens": 100,  # আনুমানিক ২০ শব্দের মধ্যে সীমিত
     "response_mime_type": "text/plain",
 }
 
@@ -129,7 +129,7 @@ def clean_inactive_sessions():
 
 def keep_alive():
     """সার্ভার সক্রিয় রাখতে প্রতি ৫ মিনিট পর পিং পাঠায়।"""
-    url = "https://new-ai-buxr.onrender.com/ping"
+    url = "https://app-ly.onrender.com/ping"
     while True:
         time.sleep(300)
         try:
