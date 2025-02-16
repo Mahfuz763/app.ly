@@ -17,7 +17,7 @@ generation_config_td = {
     "temperature": 0.2,
     "top_p": 0.85,
     "top_k": 30,
-    "max_output_tokens": 100,  # আনুমানিক ২০ শব্দের মধ্যে সীমিত
+    "max_output_tokens": 100,
     "response_mime_type": "text/plain",
 }
 
@@ -28,48 +28,17 @@ model_td = genai.GenerativeModel(
 
 # ইউজার সেশন সংরক্ষণ করার জন্য ডিকশনারি
 user_sessions = {}
-SESSION_TIMEOUT = timedelta(hours=6)  # 6 ঘণ্টা পর সেশন টাইমআউট হবে
+SESSION_TIMEOUT = timedelta(hours=6)
 
-# ইনিশিয়াল হিস্টরি
+# ইনিশিয়াল হিস্টরি (কপি করা যাবে এমনভাবে)
 initial_history = [
-    {
-        "role": "user",
-        "parts": [
-            "Give me the title and episode 1 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra.\n",
-        ],
-    },
-    {
-        "role": "model",
-        "parts": [
-            "Enter: Naruto Uzumaki!\n",
-        ],
-    },
-    {
-        "role": "user",
-        "parts": [
-            "Give me the title and episode 1\n2 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra.",
-        ],
-    },
-    {
-        "role": "model",
-        "parts": [
-            "My Name Is Konohamaru!\n",
-        ],
-    },
-    {
-        "role": "user",
-        "parts": [
-            "Give me the title and episode 1 of one piece Season 1.\n\nOf course, just remember that you can't add anything extra.",
-        ],
-    },
-    {
-        "role": "model",
-        "parts": [
-            "Romance Dawn - The Adventure of Luffy!\n",
-        ],
-    },
+    {"role": "user", "parts": ["Give me the title and episode 1 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra.\n"]},
+    {"role": "model", "parts": ["Enter: Naruto Uzumaki!\n"]},
+    {"role": "user", "parts": ["Give me the title and episode 1\n2 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra."]},
+    {"role": "model", "parts": ["My Name Is Konohamaru!\n"]},
+    {"role": "user", "parts": ["Give me the title and episode 1 of one piece Season 1.\n\nOf course, just remember that you can't add anything extra."]},
+    {"role": "model", "parts": ["Romance Dawn - The Adventure of Luffy!\n"]},
 ]
-
 
 @app.route("/td", methods=["GET"])
 def ai_response():
@@ -85,26 +54,23 @@ def ai_response():
     # নতুন ইউজারের জন্য সেশন তৈরি করা
     if user_id not in user_sessions:
         user_sessions[user_id] = {
-            "history": [],
+            "history": initial_history.copy(),  # কপি করে ইনিশিয়াল হিস্টরি সেট করা
             "last_active": datetime.now()
         }
 
     # সেশনের সর্বশেষ সক্রিয় সময় আপডেট করা
     user_sessions[user_id]["last_active"] = datetime.now()
 
-    # ইউজারের প্রশ্ন ইতিহাসে সংযোজন করা
-    user_sessions[user_id]["history"].append({"role": "user", "parts": [question]})
-
     try:
-        # পূর্ববর্তী ইতিহাস সহ চ্যাট সেশন তৈরি করা
-        chat_session = model_td.start_chat(history= initial_history + user_sessions[user_id]["history"]) # এখানে হিস্টরি যুক্ত করা হলো
-
+        # চ্যাট সেশন তৈরি করা বর্তমান হিস্টরি সহ
+        chat_session = model_td.start_chat(history=user_sessions[user_id]["history"])
+        
         # এআই-এর রেসপন্স নেওয়া
         response = chat_session.send_message(question)
 
         if response.text:
-            # রেসপন্স ইতিহাসে সংযোজন করা
-            user_sessions[user_id]["history"].append({"role": "model", "parts": [response.text]})
+            # নতুন হিস্টরি আপডেট করা
+            user_sessions[user_id]["history"] = chat_session.history
             return jsonify({"response": response.text})
         else:
             return jsonify({"error": "AI did not return any response"}), 500
@@ -125,10 +91,11 @@ def clean_inactive_sessions():
             if current_time - session_data["last_active"] > SESSION_TIMEOUT:
                 print(f"🧹 Removing inactive session for user {user_id}")
                 del user_sessions[user_id]
-        time.sleep(300)  # প্রতি ৫ মিনিট পর চেক করবে
+        time.sleep(300)
 
 def keep_alive():
     """সার্ভার সক্রিয় রাখতে প্রতি ৫ মিনিট পর পিং পাঠায়।"""
+    # আপনার রেন্ডার অ্যাপের প্রকৃত URL দিয়ে প্রতিস্থাপন করুন
     url = "https://app-ly.onrender.com/ping"
     while True:
         time.sleep(300)
@@ -142,11 +109,8 @@ def keep_alive():
             print(f"❌ Keep-Alive Error: {e}")
 
 # ব্যাকগ্রাউন্ড থ্রেড চালু করা
-clean_up_thread = threading.Thread(target=clean_inactive_sessions, daemon=True)
-clean_up_thread.start()
-
-keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
-keep_alive_thread.start()
+threading.Thread(target=clean_inactive_sessions, daemon=True).start()
+threading.Thread(target=keep_alive, daemon=True).start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
