@@ -23,17 +23,57 @@ generation_config_td = {
 
 # মডেল কনফিগার করা
 model_td = genai.GenerativeModel(
-    model_name="gemini-2.0-flash",
-    generation_config=generation_config_td,
+    model_name="gemini-2.0-flash", generation_config=generation_config_td,
 )
 
 # ইউজার সেশন সংরক্ষণ করার জন্য ডিকশনারি
 user_sessions = {}
 SESSION_TIMEOUT = timedelta(hours=6)  # 6 ঘণ্টা পর সেশন টাইমআউট হবে
 
+# ইনিশিয়াল হিস্টরি
+initial_history = [
+    {
+        "role": "user",
+        "parts": [
+            "Give me the title and episode 1 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra.\n",
+        ],
+    },
+    {
+        "role": "model",
+        "parts": [
+            "Enter: Naruto Uzumaki!\n",
+        ],
+    },
+    {
+        "role": "user",
+        "parts": [
+            "Give me the title and episode 1\n2 of Naruto Season 1.\n\nOf course, just remember that you can't add anything extra.",
+        ],
+    },
+    {
+        "role": "model",
+        "parts": [
+            "My Name Is Konohamaru!\n",
+        ],
+    },
+    {
+        "role": "user",
+        "parts": [
+            "Give me the title and episode 1 of one piece Season 1.\n\nOf course, just remember that you can't add anything extra.",
+        ],
+    },
+    {
+        "role": "model",
+        "parts": [
+            "Romance Dawn - The Adventure of Luffy!\n",
+        ],
+    },
+]
+
+
 @app.route("/td", methods=["GET"])
 def ai_response():
-    """ ইউজার ইনপুটের ভিত্তিতে এআই রেসপন্স প্রদান করে। """
+    """ইউজার ইনপুটের ভিত্তিতে এআই রেসপন্স প্রদান করে।"""
     question = request.args.get("q")
     user_id = request.args.get("id")
 
@@ -57,7 +97,7 @@ def ai_response():
 
     try:
         # পূর্ববর্তী ইতিহাস সহ চ্যাট সেশন তৈরি করা
-        chat_session = model_td.start_chat(history=user_sessions[user_id]["history"])
+        chat_session = model_td.start_chat(history= initial_history + user_sessions[user_id]["history"]) # এখানে হিস্টরি যুক্ত করা হলো
 
         # এআই-এর রেসপন্স নেওয়া
         response = chat_session.send_message(question)
@@ -74,7 +114,7 @@ def ai_response():
 
 @app.route('/ping', methods=['GET'])
 def ping():
-    """ সার্ভারের স্ট্যাটাস চেক করার জন্য একটি পিং এন্ডপয়েন্ট। """
+    """সার্ভারের স্ট্যাটাস চেক করার জন্য একটি পিং এন্ডপয়েন্ট।"""
     return jsonify({"status": "alive"})
 
 def clean_inactive_sessions():
@@ -88,7 +128,7 @@ def clean_inactive_sessions():
         time.sleep(300)  # প্রতি ৫ মিনিট পর চেক করবে
 
 def keep_alive():
-    """ সার্ভার সক্রিয় রাখতে প্রতি ৫ মিনিট পর পিং পাঠায়। """
+    """সার্ভার সক্রিয় রাখতে প্রতি ৫ মিনিট পর পিং পাঠায়।"""
     url = "https://new-ai-buxr.onrender.com/ping"
     while True:
         time.sleep(300)
